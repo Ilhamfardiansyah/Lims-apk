@@ -1,23 +1,41 @@
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
 
 import AntDesign from "@expo/vector-icons/AntDesign";
 import EvilIcons from '@expo/vector-icons/EvilIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useState } from "react";
+
+import axios from 'axios';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { FlatList } from "react-native-gesture-handler";
 
 export default function HomeScreen({navigation}: {navigation: any}) {
-const DATA = [
-  { id: '1', title: 'First Item' },
-  { id: '2', title: 'Second Item' },
-  { id: '3', title: 'Third Item' },
-  { id: '4', title: 'Fourth Item' },
-  { id: '5', title: 'Fifth Item' },
-  { id: '6', title: 'Sixth Item' },
-  { id: '7', title: 'Seventh Item' },
-  { id: '8', title: 'Eighth Item' },
-  { id: '9', title: 'Ninth Item' },
-  { id: '10', title: 'Tenth Item' },
-];
+type Tweet = {
+  id: string;
+  title: string;
+  user: {
+    name: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+};
+
+const [data, setData] = useState([]);
+
+useEffect(() => {
+  getAllTweets();
+}, [])
+
+function getAllTweets() {
+  axios.get('http://192.168.0.3/api/tweets')
+    .then(response => {
+      // console.log(response.data);
+      return setData(response.data);
+    })
+    .catch(error => {
+      console.log(error); 
+    })
+}
 
 function gotoProfile() {
   navigation.navigate('Profile')
@@ -31,28 +49,30 @@ function gotoNewTweet() {
   navigation.navigate('Beranda')
 }
 
-const renderItem = ({item}: {item: {id: string; title: string}}) => (
+const renderItem = ({item}: {item: {
+  user: any;id: string; title: string
+}}) => (
 
   <View style={styles.tweetContainer}>
     <TouchableOpacity onPress={() => gotoProfile()}>
         <Image style ={styles.avatar} source={{ 
-          uri: 'https://i.pravatar.cc/150?img=3'
+          uri: item.user.avatar
         }}/>
     </TouchableOpacity>
 
     <View style={{ flex: 1 }}>
       <TouchableOpacity style={styles.flexRow} onPress={()=> gotoProfile()}>
         <Text numberOfLines={1}
-          style={styles.tweetName}>{item.title}</Text>
+          style={styles.tweetName}>{item.user.name}</Text>
         <Text numberOfLines={1}
-          style={styles.tweetHandle}>@ilham </Text>
+          style={styles.tweetHandle}>@{item.user.username}</Text>
         <Text>&middot;</Text>
         <Text numberOfLines={1}
-        >9h</Text>
-      </TouchableOpacity>
+        >{formatDistanceToNowStrict(new Date(item.created_at))}</Text>                                    
+      </TouchableOpacity> 
 
       <TouchableOpacity style={styles.tweetContentContainer} onPress={()=> gotoSingleTwwet()}>
-        <Text style={styles.tweetContent}>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sint deserunt delectus exercitationem blanditiis soluta commodi asperiores quia est magni pariatur?</Text>
+        <Text style={styles.tweetContent}>{item.body}</Text>
       </TouchableOpacity>
 
       <View style={styles.tweetEngagement}>
@@ -98,13 +118,14 @@ const renderItem = ({item}: {item: {id: string; title: string}}) => (
 )
   return (
     <View style={styles.container}>
-      <FlatList
-        data={DATA}
+      <FlatList 
+        data={data}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
-        ItemSeparatorComponent={() => <View style={styles.tweetSeparator}></View>}
+        keyExtractor={item=>item.id}
+        ItemSeparatorComponent={() => (
+          <View style={styles.tweetSeparator}></View>
+        )}
       />
-      
       <TouchableOpacity
         style={styles.floatingButton}
         onPress={() => gotoNewTweet()}
@@ -176,3 +197,4 @@ const styles = StyleSheet.create({
     right: 12
   }
 })
+
