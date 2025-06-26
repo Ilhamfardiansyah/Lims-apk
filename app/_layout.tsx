@@ -90,13 +90,11 @@ function TabsNavigatorScreen() {
 }
 
 
-// ✅ Drawer sebagai root layout
 export default function RootLayout() {
   return (
     <Drawer.Navigator
       screenOptions={{
         drawerType: 'front',
-        drawerStyle: { width: 240 },
         headerShown: true,
       }}
       initialRouteName="Home"
