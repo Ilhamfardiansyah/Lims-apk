@@ -1,94 +1,135 @@
+    import RenderItem from '@/components/RenderItem';
+import axiosConfig from '@/helpers/axiosConfig';
 import { EvilIcons } from '@expo/vector-icons';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
-export default function Profile() {
-    const DATA = [
-        { id: '1', title: 'First Item' },
-        { id: '2', title: 'Second Item' },
-        { id: '3', title: 'Third Item' },
-        { id: '4', title: 'Fourth Item' },
-        { id: '5', title: 'Fifth Item' },
-        { id: '6', title: 'Sixth Item' },
-        { id: '7', title: 'Seventh Item' },
-        { id: '8', title: 'Eighth Item' },
-        { id: '9', title: 'Ninth Item' },
-        { id: '10', title: 'Tenth Item' },
-    ];
+    export default function Profile({ route, navigation }) {
+    const { userId } = route.params;
 
-    const renderItem = ({ item }) => (
-        <View style={{ marginVertical: 20 }}>
-            <Text>{item.title}</Text>
-        </View>
-    )
+    const [user, setUser] = useState(null);
+    const [data, setData] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [isEndOfScrolling, setIsEndOfScrolling] = useState(false);
 
-    const ProfileHeader = () => (
-        <View style={styles.container}>
-            <Image style={styles.backgroundImage} source={{ 
-                uri: 'https://img.freepik.com/free-vector/dark-hexagonal-background-with-gradient-color_79603-1410.jpg'
-                }}
-            />
+    useEffect(() => {
+        setUser(null); // reset saat ganti userId
+        setData([]);
+        setPage(1);
+        fetchProfile();
+        fetchTweets(1);
+    }, [userId]);
+
+    const fetchProfile = async () => {
+        try {
+        const res = await axiosConfig.get(`/api/users/${userId}`);
+        setUser(res.data);
+        } catch (error) {
+        console.log('Error fetching profile:', error);
+        } finally {
+        setIsLoading(false);
+        }
+    };
+
+    const fetchTweets = async (pageToLoad = 1) => {
+        try {
+        const res = await axiosConfig.get(`/api/users/${userId}/tweets?page=${pageToLoad}`);
+        if (pageToLoad === 1) {
+            setData(res.data.data);
+        } else {
+            setData(prev => [...prev, ...res.data.data]);
+        }
+        setIsEndOfScrolling(!res.data.next_page_url);
+        } catch (error) {
+        console.log('Error fetching tweets:', error);
+        }
+    };
+
+    const handleLoadMore = () => {
+        if (!isEndOfScrolling) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchTweets(nextPage);
+        }
+    };
+
+    const ProfileHeader = () => {
+        if (!user) {
+        return (
+            <View style={{ padding: 20 }}>
+            <ActivityIndicator size="large" color="gray" />
+            </View>
+        );
+        }
+
+        return (
+        <>
+            <Image style={styles.backgroundImage} source={{ uri: 'https://img.freepik.com/free-vector/dark-hexagonal-background-with-gradient-color_79603-1410.jpg' }} />
             <View style={styles.avatarContainer}>
-                <Image style={styles.avatar} source={{ 
-                    uri: 'https://i.pravatar.cc/150?img=3'
-                }}
-                />
-                <TouchableOpacity style={styles.followButton}>
-                    <Text style={styles.followButtonText}>Follow</Text>
-                </TouchableOpacity>
+            <Image style={styles.avatar} source={{ uri: user.avatar }} />
+            <TouchableOpacity style={styles.followButton}>
+                <Text style={styles.followButtonText}>Follow</Text>
+            </TouchableOpacity>
             </View>
-
             <View style={styles.nameContainer}>
-                <Text style={styles.profileName}>Ilham Fardiansyah</Text>
-                <Text style={styles.profileHandle}>@Ilhamf</Text>
+            <Text style={styles.profileName}>{user.name}</Text>
+            <Text style={styles.profileHandle}>@{user.username}</Text>
             </View>
-
             <View style={styles.profileContainer}>
-                <Text style={styles.profileContainerText}>
-                    Ceo, Faounder, Influencer, HTML, CSS, Bootstrap, Javascript
-                </Text>
+            <Text style={styles.profileContainerText}>{user.profile}</Text>
             </View>
-
             <View style={styles.locationContainer}>
-                <EvilIcons 
-                    name="location" 
-                    size={24} 
-                    color="gray"/>
-                <Text style={styles.textGray}>Bekasi, Indonesia</Text>
+            <EvilIcons name="location" size={24} color="gray" />
+            <Text style={styles.textGray}>
+                {user.location} {user.link} {user.linkText}
+            </Text>
             </View>
-
             <View style={styles.followContainer}>
-                <View style={styles.followItem}>
-                    <Text style={styles.followNumber}>509</Text>
-                    <Text style={styles.followItemLabel}>Following</Text>
-                </View>
-                <View style={[styles.followItem, styles.ml4]}>
-                    <Text style={styles.followNumber}>22,1 M</Text>
-                    <Text style={styles.followItemLabel}>Followers</Text>
-                </View>
+            <View style={styles.followItem}>
+                <Text style={styles.followNumber}>509</Text>
+                <Text style={styles.followItemLabel}>Following</Text>
+            </View>
+            <View style={[styles.followItem, styles.ml4]}>
+                <Text style={styles.followNumber}>22,1 M</Text>
+                <Text style={styles.followItemLabel}>Followers</Text>
+            </View>
             </View>
             <View style={styles.separator}></View>
-        </View>
-    );
+        </>
+        );
+    };
 
     return (
+        <View style={styles.container}>
         <FlatList
-            style={styles.container}
-            data={DATA}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            ItemSeparatorComponent={() => <View style={styles.tweetSeparator}></View>}
+            data={data}
+            renderItem={({ item }) => <RenderItem item={item} />}
+            keyExtractor={item => item.id.toString()}
             ListHeaderComponent={ProfileHeader}
-            />
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ItemSeparatorComponent={() => <View style={styles.tweetSeparator} />}
+        />
+        </View>
     );
-}
+    }
 
-const styles = StyleSheet.create({
+    const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgrounColor: 'white'
+        backgroundColor: 'white',
     },
     backgroundImage: {
-        width: 800,
+        width: '100%',
         height: 120,
     },
     avatarContainer: {
@@ -103,14 +144,13 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         borderWidth: 4,
         borderColor: 'white',
-        marginTop: -34
-
+        marginTop: -34,
     },
     followButton: {
         backgroundColor: '#1d9bf1',
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 24
+        borderRadius: 24,
     },
     followButtonText: {
         color: 'white',
@@ -129,12 +169,12 @@ const styles = StyleSheet.create({
     profileContainer: {
         paddingHorizontal: 10,
         marginTop: 8,
-    },  
+    },
     profileContainerText: {
         lineHeight: 22,
     },
     textGray: {
-        color: "gray",
+        color: 'gray',
     },
     locationContainer: {
         flexDirection: 'row',
@@ -160,10 +200,10 @@ const styles = StyleSheet.create({
     },
     tweetSeparator: {
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb'
+        borderBottomColor: '#e5e7eb',
     },
     separator: {
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb'
+        borderBottomColor: '#e5e7eb',
     },
-})
+    });

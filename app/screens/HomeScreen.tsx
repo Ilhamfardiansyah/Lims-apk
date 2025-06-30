@@ -1,14 +1,10 @@
+import RenderItem from '@/components/RenderItem';
 import axiosConfig from '@/helpers/axiosConfig';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import EvilIcons from '@expo/vector-icons/EvilIcons';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { formatDistanceToNowStrict } from 'date-fns';
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
-  Platform,
   RefreshControl,
   SafeAreaView,
   StyleSheet,
@@ -23,6 +19,7 @@ type Tweet = {
   body: string;
   created_at: string;
   user: {
+    id: string;
     name: string;
     username: string;
     avatar: string;
@@ -36,7 +33,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [page, setPage] = useState(1);
   const [isEndOfScrolling, setIsEndOfScrolling] = useState(false);
   const [isPaginating, setIsPaginating] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(false); // untuk memaksa fetch ulang
+  const [forceRefresh, setForceRefresh] = useState(false);
 
   useEffect(() => {
     fetchTweets();
@@ -69,7 +66,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (page !== 1) {
       setPage(1);
     } else {
-      setForceRefresh(prev => !prev); // memaksa trigger ulang useEffect
+      setForceRefresh(prev => !prev);
     }
   }, [page]);
 
@@ -80,8 +77,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     }
   }, [isEndOfScrolling, isPaginating, isRefreshing]);
 
-  const gotoProfile = useCallback(() => {
-    navigation.navigate('Profile');
+  const gotoProfile = useCallback((userId: string) => {
+    navigation.push('Profile Screens', {
+      userId: userId,
+    });
   }, [navigation]);
 
   const gotoSingleTweet = useCallback((tweetId: string) => {
@@ -114,7 +113,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const renderItem = useCallback(
     ({ item }: { item: Tweet }) => (
-      <TweetItem
+      <RenderItem
         item={item}
         gotoProfile={gotoProfile}
         gotoSingleTweet={gotoSingleTweet}
@@ -127,11 +126,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     <SafeAreaView style={styles.container}>
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 8 }} size="large" color="gray" />
-      ) : (
+          ) : (
         <FlatList
           data={data}
           renderItem={renderItem}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={(item, index)=> `${item.id}-$(index)`}
           ItemSeparatorComponent={() => <View style={styles.tweetSeparator} />}
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
@@ -158,98 +157,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   );
 }
 
-const TweetItem = memo(({ item, gotoProfile, gotoSingleTweet }: {
-  item: Tweet;
-  gotoProfile: () => void;
-  gotoSingleTweet: () => void;
-}) => (
-  <View style={styles.tweetContainer}>
-    <TouchableOpacity onPress={gotoProfile}>
-      <Image style={styles.avatar} source={{ uri: item.user.avatar }} />
-    </TouchableOpacity>
-
-    <View style={{ flex: 1 }}>
-      <TouchableOpacity style={styles.flexRow} onPress={gotoProfile}>
-        <Text numberOfLines={1} style={styles.tweetName}>{item.user.name}</Text>
-        <Text numberOfLines={1} style={styles.tweetHandle}>@{item.user.username}</Text>
-        <Text> · </Text>
-        <Text numberOfLines={1}>
-          {formatDistanceToNowStrict(new Date(item.created_at))}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.tweetContentContainer} onPress={() => gotoSingleTweet(item.id)}>
-        <Text style={styles.tweetContent}>{item.body}</Text>
-      </TouchableOpacity>
-
-      <View style={styles.tweetEngagement}>
-        <TouchableOpacity style={styles.flexRow}>
-          <Ionicons name="chatbubbles-outline" size={18} color="gray" style={{ marginRight: 2 }} />
-          <Text style={styles.textGray}>456</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-          <AntDesign name="retweet" size={18} color="gray" style={{ marginRight: 2 }} />
-          <Text style={styles.textGray}>456</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-          <AntDesign name="hearto" size={18} color="gray" style={{ marginRight: 2 }} />
-          <Text style={styles.textGray}>20,156</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-          <EvilIcons name={Platform.OS === 'ios' ? 'share-apple' : 'share-google'} size={18} color="gray" style={{ marginRight: 2 }} />
-          <Text style={styles.textGray}>20,156</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-));
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
-  },
-  tweetContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    marginRight: 8,
-    borderRadius: 21,
-  },
-  flexRow: {
-    flexDirection: 'row',
-  },
-  tweetName: {
-    fontWeight: 'bold',
-    color: '#222222',
-  },
-  tweetHandle: {
-    marginHorizontal: 8,
-    color: 'gray',
-  },
-  tweetContent: {
-    lineHeight: 20,
-  },
-  tweetContentContainer: {
-    marginTop: 4,
-  },
-  tweetEngagement: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  textGray: {
-    color: 'gray',
-  },
-  ml4: {
-    marginLeft: 16,
   },
   tweetSeparator: {
     borderBottomWidth: 1,
