@@ -1,23 +1,55 @@
 import { Entypo, EvilIcons, Ionicons } from '@expo/vector-icons';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import axiosConfig from '@/helpers/axiosConfig';
+import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 
-export default function Details({navigation}) {
+export default function Details({ route, navigation }) {
+    const [tweet, setTweet] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    const devicePlatform = Platform.OS === 'ios' ? 'Twitter for iPhone' : 'Twitter for Android';
+    
+    useEffect(() => {
+        getTweet();
+    }, []);
+
+    function getTweet() {
+        axiosConfig
+        .get(`/api/tweets/${route.params.tweetId}`)
+        .then(response => {
+            console.log(response.data)
+            setTweet(response.data)
+
+            setIsLoading(false);
+        })
+        .catch(error => {
+            console.log(error);
+            setIsLoading(false);
+        })
+    }
+
     function gotoProfile() {
         navigation.navigate('Profile Screens')
     }
 
     return (
         <View style={styles.container}>
+            {isLoading ? (
+                <ActivityIndicator style={{ marginTop: 8 }} size="large" color="gray" />
+            ) : (
+            <>
             <View style={styles.profileContainer}>
                 <TouchableOpacity style={styles.flexRow} onPress={() => gotoProfile()}>
                     <Image style ={styles.avatar} source={{ 
-                        uri: 'https://i.pravatar.cc/150?img=3'
+                        uri: tweet.user.avatar
                     }}/>
 
                     <View>
-                        <Text style={styles.tweetName}>Andre Madarang</Text>
-                        <Text style={styles.tweetHandle}>@Madarang</Text>
+                        <Text style={styles.tweetName}>{tweet.user.name}</Text>
+                        <Text style={styles.tweetHandle}>@{tweet.user.username}</Text>
                     </View>
 
                 </TouchableOpacity>
@@ -27,7 +59,14 @@ export default function Details({navigation}) {
             </View>
 
             <View style={styles.tweetContentContainer}>
-                <Text style={styles.tweetContent}>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sint deserunt delectus exercitationem blanditiis soluta commodi asperiores quia est magni pariatur?</Text>
+                <Text style={styles.tweetContent}>{tweet.body}</Text>
+                <View style={styles.TimestampContainer}>
+                    <Text style={styles.TimestampText}>{format(new Date(tweet.created_at), 'h:mm a')}</Text>
+                    <Text style={styles.TimestampText}>&middot;</Text>
+                    <Text style={styles.TimestampText}>{format(new Date(tweet.created_at), 'd MMM.yy')}</Text>
+                    <Text style={styles.TimestampText}>&middot;</Text>
+                    <Text style={[styles.TimestampText, styles.linkColor]}>{devicePlatform}</Text>
+                </View>
             </View>
 
             <View style={styles.tweetEngagement}>
@@ -75,6 +114,8 @@ export default function Details({navigation}) {
                         style={{ marginRight: 2 }} />
                 </TouchableOpacity>
             </View>
+            </>
+            )}
         </View>
     
     );
@@ -138,5 +179,16 @@ const styles = StyleSheet.create({
     },
     spaceAround: {
         justifyContent: 'space-around',
+    },
+    TimestampContainer: {
+        flexDirection: "row",
+        marginTop: 12,
+    },
+    TimestampText: {
+        color: "gray",
+        marginRight: 6,
+    },
+    linkColor: {
+        color: '#1d9bf1'
     }
 })

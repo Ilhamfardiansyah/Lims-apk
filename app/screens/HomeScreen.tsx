@@ -1,95 +1,126 @@
-import AntDesign from "@expo/vector-icons/AntDesign";
+import axiosConfig from '@/helpers/axiosConfig';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import EvilIcons from '@expo/vector-icons/EvilIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import axios from 'axios';
 import { formatDistanceToNowStrict } from 'date-fns';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Platform, RefreshControl, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+type Tweet = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+  user: {
+    name: string;
+    username: string;
+    avatar: string;
+  };
+};
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
-  type Tweet = {
-    id: string;
-    title: string;
-    body: string;
-    created_at: string;
-    user: {
-      name: string;
-      username: string;
-      avatar: string;
-    };
-  };
-
   const [data, setData] = useState<Tweet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [isEndOfScrolling, setIsEndOfScrolling] = useState(false);
+  const [isPaginating, setIsPaginating] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(false); // untuk memaksa fetch ulang
 
   useEffect(() => {
-    getAllTweets();
-  }, []);
+    fetchTweets();
+  }, [page, forceRefresh]);
 
-  const getAllTweets = async () => {
+  const fetchTweets = async () => {
     try {
-      const response = await axios.get('http://192.168.0.2/api/tweets');
-      setData(response.data);
+      const response = await axiosConfig.get(`/api/tweets?page=${page}`);
+      const newData = response.data.data;
+
+      if (page === 1) {
+        setData(newData);
+      } else {
+        setData(prev => [...prev, ...newData]);
+      }
+
+      setIsEndOfScrolling(!response.data.next_page_url);
     } catch (error) {
-      console.log(error);
+      console.log('Error fetching tweets:', error);
     }
+
     setIsLoading(false);
     setIsRefreshing(false);
+    setIsPaginating(false);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    getAllTweets();
+    setIsEndOfScrolling(false);
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      setForceRefresh(prev => !prev); // memaksa trigger ulang useEffect
+    }
+  }, [page]);
+
+  const handleEnd = useCallback(() => {
+    if (!isEndOfScrolling && !isPaginating && !isRefreshing) {
+      setIsPaginating(true);
+      setPage(prev => prev + 1);
+    }
+  }, [isEndOfScrolling, isPaginating, isRefreshing]);
+
+  const gotoProfile = useCallback(() => {
+    navigation.navigate('Profile');
+  }, [navigation]);
+
+  const gotoSingleTweet = useCallback((tweetId: string) => {
+    navigation.navigate('Details', { tweetId });
+  }, [navigation]);
+
+  const gotoNewTweet = useCallback(() => {
+    navigation.navigate('Beranda');
+  }, [navigation]);
+
+  const renderFooter = () => {
+    if (isPaginating) {
+      return (
+        <View style={styles.footerLoading}>
+          <ActivityIndicator size="large" color="gray" />
+        </View>
+      );
+    }
+
+    if (isEndOfScrolling) {
+      return (
+        <View style={styles.footerEnd}>
+          <Text style={{ color: 'gray' }}>Tidak ada lagi data</Text>
+        </View>
+      );
+    }
+
+    return null;
   };
 
-  const gotoProfile = () => navigation.navigate('Profile');
-  const gotoSingleTweet = () => navigation.navigate('Details');
-  const gotoNewTweet = () => navigation.navigate('Beranda');
-
-  const renderItem = ({ item }: { item: Tweet }) => (
-    <View style={styles.tweetContainer}>
-      <TouchableOpacity onPress={gotoProfile}>
-        <Image style={styles.avatar} source={{ uri: item.user.avatar }} />
-      </TouchableOpacity>
-
-      <View style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.flexRow} onPress={gotoProfile}>
-          <Text numberOfLines={1} style={styles.tweetName}>{item.user.name}</Text>
-          <Text numberOfLines={1} style={styles.tweetHandle}>@{item.user.username}</Text>
-          <Text> · </Text>
-          <Text numberOfLines={1}>
-            {formatDistanceToNowStrict(new Date(item.created_at))}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tweetContentContainer} onPress={gotoSingleTweet}>
-          <Text style={styles.tweetContent}>{item.body}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.tweetEngagement}>
-          <TouchableOpacity style={styles.flexRow}>
-            <Ionicons name="chatbubbles-outline" size={18} color="gray" style={{ marginRight: 2 }} />
-            <Text style={styles.textGray}>456</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-            <AntDesign name="retweet" size={18} color="gray" style={{ marginRight: 2 }} />
-            <Text style={styles.textGray}>456</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-            <AntDesign name="hearto" size={18} color="gray" style={{ marginRight: 2 }} />
-            <Text style={styles.textGray}>20,156</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
-            <EvilIcons name={Platform.OS === 'ios' ? 'share-apple' : 'share-google'} size={18} color="gray" style={{ marginRight: 2 }} />
-            <Text style={styles.textGray}>20,156</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+  const renderItem = useCallback(
+    ({ item }: { item: Tweet }) => (
+      <TweetItem
+        item={item}
+        gotoProfile={gotoProfile}
+        gotoSingleTweet={gotoSingleTweet}
+      />
+    ),
+    [gotoProfile, gotoSingleTweet]
   );
 
   return (
@@ -105,6 +136,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
           }
+          onEndReached={handleEnd}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          removeClippedSubviews={true}
+          getItemLayout={(_, index) => ({
+            length: 110,
+            offset: 110 * index,
+            index,
+          })}
         />
       )}
 
@@ -114,6 +157,55 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     </SafeAreaView>
   );
 }
+
+const TweetItem = memo(({ item, gotoProfile, gotoSingleTweet }: {
+  item: Tweet;
+  gotoProfile: () => void;
+  gotoSingleTweet: () => void;
+}) => (
+  <View style={styles.tweetContainer}>
+    <TouchableOpacity onPress={gotoProfile}>
+      <Image style={styles.avatar} source={{ uri: item.user.avatar }} />
+    </TouchableOpacity>
+
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity style={styles.flexRow} onPress={gotoProfile}>
+        <Text numberOfLines={1} style={styles.tweetName}>{item.user.name}</Text>
+        <Text numberOfLines={1} style={styles.tweetHandle}>@{item.user.username}</Text>
+        <Text> · </Text>
+        <Text numberOfLines={1}>
+          {formatDistanceToNowStrict(new Date(item.created_at))}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.tweetContentContainer} onPress={() => gotoSingleTweet(item.id)}>
+        <Text style={styles.tweetContent}>{item.body}</Text>
+      </TouchableOpacity>
+
+      <View style={styles.tweetEngagement}>
+        <TouchableOpacity style={styles.flexRow}>
+          <Ionicons name="chatbubbles-outline" size={18} color="gray" style={{ marginRight: 2 }} />
+          <Text style={styles.textGray}>456</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
+          <AntDesign name="retweet" size={18} color="gray" style={{ marginRight: 2 }} />
+          <Text style={styles.textGray}>456</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
+          <AntDesign name="hearto" size={18} color="gray" style={{ marginRight: 2 }} />
+          <Text style={styles.textGray}>20,156</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.flexRow, styles.ml4]}>
+          <EvilIcons name={Platform.OS === 'ios' ? 'share-apple' : 'share-google'} size={18} color="gray" style={{ marginRight: 2 }} />
+          <Text style={styles.textGray}>20,156</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+));
 
 const styles = StyleSheet.create({
   container: {
@@ -174,6 +266,11 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 12,
   },
+  footerLoading: {
+    paddingVertical: 20,
+  },
+  footerEnd: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
 });
-
-
