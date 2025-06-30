@@ -20,7 +20,6 @@ export default function Details({ route, navigation }) {
         axiosConfig
         .get(`/api/tweets/${route.params.tweetId}`)
         .then(response => {
-            console.log(response.data)
             setTweet(response.data)
 
             setIsLoading(false);

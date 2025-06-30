@@ -38,17 +38,17 @@ export function StackNavigatorScreen() {
       <Stack.Screen
         name="Details"
         component={Details}
-        options={{ title: 'Detail Tambahan' }}
+        options={{ title: 'Detail Tambahan', headerShown: false }}
       />
       <Stack.Screen
         name="Beranda"
         component={Beranda}
-        options={{ title: 'Beranda' }}
+        options={{ title: 'Beranda', headerShown: false  }}
       />
       <Stack.Screen
         name="Profile Screens"
         component={Profile}
-        options={{ title: 'Profile Screens' }}
+        options={{ title: 'Profile Screens', headerShown: false }}
       />
     </Stack.Navigator>
   );
