@@ -4,6 +4,7 @@ import { AuthContext } from '@/context/AuthProvider';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as SecureStore from 'expo-secure-store';
 import React, { useContext, useEffect, useState } from 'react';
 import LoginScreen from './app/screens/Auth/LoginScreen';
 import RegisterScreen from './app/screens/Auth/RegisterScreen';
@@ -14,6 +15,7 @@ import Notification from './app/screens/Notivication';
 import Profile from './app/screens/Profile';
 import Search from './app/screens/Search';
 import SetingScreen from './app/screens/SetingScreen';
+
 
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -123,9 +125,16 @@ export default function RootLayout() {
   const { user, setUser } = useContext(AuthContext); 
 
   useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 2000)
+      SecureStore.getItemAsyc('user')
+      .then(userString => {
+        if (userString) {
+          setUser('ilham')
+        }
+        setIsLoading(false);
+      }).catch(crr => {
+        console.log(err)
+        setIsLoading(false);
+      })
   }, []);
 
   if (isLoading) {
