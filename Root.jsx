@@ -125,17 +125,19 @@ export default function RootLayout() {
   const { user, setUser } = useContext(AuthContext); 
 
   useEffect(() => {
-      SecureStore.getItemAsyc('user')
-      .then(userString => {
-        if (userString) {
-          setUser('ilham')
-        }
-        setIsLoading(false);
-      }).catch(crr => {
-        console.log(err)
-        setIsLoading(false);
-      })
+    SecureStore.getItemAsync('user')
+    .then(userStrig => {
+      if (userStrig) {
+        setUser(JSON.parse.userStrig)
+      }
+      setIsLoading(false)
+    })
+    .catch(err => {
+      console.log(err)
+      setIsLoading(false)
+    });
   }, []);
+  
 
   if (isLoading) {
     return (
