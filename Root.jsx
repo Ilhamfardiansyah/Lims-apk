@@ -177,7 +177,8 @@ export default function RootLayout() {
         <Stack.Navigator>
       <Stack.Screen
         name="Auth"
-        component={AuthStackNavigatorScreen} // ✅ Ini benar
+        component={AuthStackNavigatorScreen}
+        options={{ headerShown: false }}
       />
       </Stack.Navigator>
 
